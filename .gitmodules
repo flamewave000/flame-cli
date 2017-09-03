@@ -1,0 +1,3 @@
+[submodule "cpp/stringx"]
+	path = cpp/stringx
+	url = git@github.com:flamewave000/stringx.git

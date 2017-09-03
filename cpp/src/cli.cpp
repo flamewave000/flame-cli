@@ -1,11 +1,11 @@
-#include "str.h"
+#include "stringx.hpp"
 #include "cli.h"
 #include <queue>
 #include <iostream>
 #include <sstream>
 
 using namespace std;
-using namespace str;
+using namespace strx;
 
 
 #pragma region _flag Definition
@@ -215,8 +215,8 @@ tuple<bool, std::string> CLI::getArg(std::string arg)
 	{
 		return std::make_tuple(false, std::string(nullptr));
 	}
-	return str::contains(arg, '=') ?
-		std::make_tuple(true, str::split(arg, '=')[0])
+	return strx::contains(arg, '=') ?
+		std::make_tuple(true, strx::split(arg, '=')[0])
 		: std::make_tuple(false, arg);
 }
 Flag CLI::getFlag(std::string name, bool isLong)
