@@ -1,3 +1,6 @@
 [submodule "cpp/stringx"]
 	path = cpp/stringx
 	url = git@github.com:flamewave000/stringx.git
+[submodule "cpp/linq"]
+	path = cpp/linq
+	url = git@github.com:flamewave000/flame-linq.git

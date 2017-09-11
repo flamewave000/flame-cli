@@ -4,19 +4,24 @@
 #include <iostream>
 #include <sstream>
 
+#define LINQ_USE_MACROS
+#include <linq.hpp>
+#include <stringx.hpp>
+
 using namespace std;
 using namespace strx;
+using namespace linq;
 
 
 #pragma region _flag Definition
 #pragma region Constructors
-_flag::_flag(void(*call)(std::string), std::string shortName, std::string longName, std::string description, Data data, bool required)
-	: shortName(shortName), longName(longName), description(description), data(data), call(call), required(required) { }
+Flag::Flag(void(*call)(string), string shortName, string longName, string description, Data data, bool required)
+	: shortName(shortName), longName(longName), description(move(description)), data(data), call(call), required(required) { }
 #pragma endregion
 
 
 #pragma region Public Methods
-string _flag::toString()
+string Flag::toString()
 {
 	return shortName.size() > 0 ? shortName : longName;
 }
@@ -24,27 +29,17 @@ string _flag::toString()
 #pragma endregion
 
 
-#pragma region Flag Definition
-#pragma region Constructors
-Flag::Flag() : std::shared_ptr<_flag>() { }
-Flag::Flag(_flag * _Px) : std::shared_ptr<_flag>(_Px) { }
-Flag::Flag(void(*call)(std::string), std::string shortName, std::string longName, std::string description, Data data, bool required)
-	: std::shared_ptr<_flag>(new _flag(call, shortName, longName, description, data, required)) { }
-#pragma endregion
-#pragma endregion
-
-
 #pragma region CLI Definition
 #pragma region Constructors
-CLI::CLI(int(*start)(std::vector<std::string>), vector<Flag> flags, int argc, const char* argv[], std::string description)
+CLI::CLI(function<int(vector<string>)> start, vector<std::shared_ptr<Flag>> flags, const int &argc, const char* argv[], string description)
+	: startDelegate(start),
+	flags(std::move(flags)),
+	description(description),
+	argv(argc)
 {
-	this->startDelegate = start;
-	this->flags = flags;
-	this->description = description;
-	this->argv = vector<std::string>(argc);
 	for (int c = 0; c < argc; c++)
 	{
-		this->argv[c] = std::string(argv[c]);
+		this->argv[c] = string(argv[c]);
 	}
 }
 #pragma endregion
@@ -53,56 +48,41 @@ CLI::CLI(int(*start)(std::vector<std::string>), vector<Flag> flags, int argc, co
 #pragma region Public Methods
 int CLI::run()
 {
-	queue<std::string> args;
-	queue<Flag> flags;
-	vector<Flag> reqs;
-	for (auto req : this->flags)
-	{
-		if (req->required)
-		{
-			reqs.push_back(req);
-		}
-	}
-	vector<std::string> unknown;
+	queue<string> args;
+	linq_vec<Flag*> reqs = (flags WHERE { return item->required; } SELECT(Flag*) { return item.get(); });
+	vector<string> unknown;
 	if (argv.size() > 1 && argv[1] == "--help")
 	{
 		showHelp();
 		return EXIT_SUCCESS;
 	}
-	for (int c = 1, size = argv.size(); c < size; c++)
+	for (size_t c = 1, size = argv.size(); c < size; c++)
 	{
 		args.push(argv[c]);
 	}
-	Flag flag;
+	Flag *flag;
 	while (!args.empty())
 	{
-		std::string rawArg = args.front();
+		string rawArg = args.front();
 		args.pop();
-		tuple<bool, std::string> arg = getArg(rawArg);
-		flag = getFlag(get<1>(arg), get<0>(arg));
+		pair<bool, string> arg = getArg(rawArg);
+		flag = getFlag(arg.second, arg.first);
 		if (flag == nullptr)
 		{
 			unknown.push_back(rawArg);
 			continue;
 		}
-		for (int c = 0, size = reqs.size(); c < size; c++)
-		{
-			if (flag == reqs[c])
-			{
-				reqs.erase(reqs.begin() + c);
-				break;
-			}
-		}
-		std::string data = "";
+		reqs = reqs.where([&](auto item) { return flag != item; });
+		string data = "";
 		if (flag->data != Data::NoData)
 		{
-			if (get<1>(arg) == flag->shortName)
+			if (arg.second == flag->shortName)
 			{
-				tuple<bool, std::string> tmp = !args.empty() ? getArg(args.front()) : tuple<bool, std::string>();
-				bool isFlag = getFlag(get<1>(tmp), get<0>(tmp)) != nullptr;
+				pair<bool, string> tmp = !args.empty() ? getArg(args.front()) : pair<bool, string>();
+				bool isFlag = getFlag(tmp.second, tmp.first) != nullptr;
 				if (flag->data == Data::Required && (args.empty() || isFlag))
 				{
-					showHelp("Expected data for flag '" + std::get<1>(arg) + "'");
+					showHelp("Expected data for flag '" + arg.second + "'");
 					return EXIT_FAILURE;
 				}
 				else if (flag->data == Data::Required || (flag->data == Data::Optional && !args.empty() && !isFlag))
@@ -119,7 +99,7 @@ int CLI::run()
 				}
 				else
 				{
-					showHelp("Expected data for flag '" + std::get<1>(arg) + "'");
+					showHelp("Expected data for flag '" + arg.second + "'");
 					return EXIT_FAILURE;
 				}
 			}
@@ -128,7 +108,7 @@ int CLI::run()
 	}
 	if (reqs.size() > 0)
 	{
-		std::vector<std::string> strs;
+		vector<string> strs;
 		for (auto req : reqs)
 		{
 			strs.push_back(req->toString());
@@ -138,7 +118,7 @@ int CLI::run()
 	}
 	return startDelegate(unknown);
 }
-void CLI::showHelp(std::string error)
+void CLI::showHelp(string error)
 {
 	if (error.size() != 0)
 	{
@@ -148,7 +128,7 @@ void CLI::showHelp(std::string error)
 		printf("usage: %s [options]\n", argv[0].c_str());
 	else
 		cout << description << '\n';
-	int shortLen = 0, longLen = 0, snameLen = 0, lnameLen = 0;
+	size_t shortLen = 0, longLen = 0, snameLen = 0, lnameLen = 0;
 	for (auto flag : flags)
 	{
 		if (flag->shortName.size() != 0)
@@ -162,12 +142,12 @@ void CLI::showHelp(std::string error)
 			longLen = lnameLen > longLen ? lnameLen : longLen;
 		}
 	}
-	std::string shortName;
-	std::string longName;
-	std::string desc;
-	std::string cmdStr;
-	std::vector<int> newlineIndecies;
-	int count, max;
+	string shortName;
+	string longName;
+	string desc;
+	string cmdStr;
+	vector<size_t> newlineIndecies;
+	size_t count, max;
 	for (auto flag : flags)
 	{
 		shortName = flag->shortName.size() != 0 && trim(flag->shortName).size() ? flag->shortName : "";
@@ -182,7 +162,7 @@ void CLI::showHelp(std::string error)
 		newlineIndecies.clear();
 		count = 0;
 		max = 80 - cmdStr.size();
-		for (int c = 0, size = desc.size(); c < size; c++)
+		for (size_t c = 0, size = desc.size(); c < size; c++)
 		{
 			if (desc[c] == '\n')
 				count = 0;
@@ -200,7 +180,7 @@ void CLI::showHelp(std::string error)
 			desc.insert(desc.begin() + index, '\n');
 			count += 1;
 		}
-		std::vector<std::string> lines = split(desc, '\n');
+		vector<string> lines = split(desc, '\n');
 		desc = join(lines, rpad("\n", cmdStr.size() + 1));
 		cerr << cmdStr << desc << endl;
 	}
@@ -209,37 +189,21 @@ void CLI::showHelp(std::string error)
 
 
 #pragma region Helper Methods
-tuple<bool, std::string> CLI::getArg(std::string arg)
+pair<bool, string> CLI::getArg(string arg)
 {
 	if (arg.size() == 0)
 	{
-		return std::make_tuple(false, std::string(nullptr));
+		return pair<bool, string>(false, string(nullptr));
 	}
-	return strx::contains(arg, '=') ?
-		std::make_tuple(true, strx::split(arg, '=')[0])
-		: std::make_tuple(false, arg);
+	return strx::contains(arg, '=')
+		? pair<bool, string>(true, strx::split(arg, '=')[0])
+		: pair<bool, string>(false, arg);
 }
-Flag CLI::getFlag(std::string name, bool isLong)
+Flag* CLI::getFlag(string name, bool isLong)
 {
-	if (name.size() == 0)
-	{
-		return nullptr;
-	}
-	for (auto flag : flags)
-	{
-		if (isLong)
-		{
-			if (flag->longName == name)
-			{
-				return flag;
-			}
-		}
-		else if (flag->shortName == name)
-		{
-			return flag;
-		}
-	}
-	return nullptr;
+	return name.size() != 0
+		? (flags FIRST_OR_DEFAULT(nullptr) { return isLong ? item->longName == name : item->shortName == name; }).get()
+		: nullptr;
 }
 #pragma endregion  
 #pragma endregion

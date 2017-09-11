@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "object", "object.vcxproj", "{77B15AD2-0763-4987-9D68-0A0D6E0866AC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cli", "cli.vcxproj", "{77B15AD2-0763-4987-9D68-0A0D6E0866AC}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "stringx", "stringx\stringx.vcxproj", "{425B9472-EA08-4FCF-A44F-45CDC8499211}"
 EndProject

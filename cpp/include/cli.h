@@ -8,12 +8,13 @@
 #ifndef _VECTOR_
 #include <vector>
 #endif
-#ifndef _TUPLE_
-#include <tuple>
-#endif
 #ifndef _MEMORY_
 #include <memory>
 #endif
+#define LINQ_USE_MACROS
+#include <linq.hpp>
+#include <functional>
+
 
 typedef enum _data
 {
@@ -28,7 +29,8 @@ public:
 	virtual std::string toString() { return typeid(*this).name(); }
 };
 
-class _flag : public Base
+class CLI;
+class Flag : public Base
 {
 public:
 	std::string shortName; // Short name of flag(i.e. - i, -u john.doe).
@@ -37,35 +39,30 @@ public:
 	std::string description; // Description of what the argument does.
 	Data data; // Takes the next argument in the argument list as data.
 	void(*call)(std::string); // Method to be called, must take one parameter. Will be the paired data, or None if data is False.
+private:
+	Flag() {}
 public:
 	/*Initializes the Flag class*/
-	_flag(void(*call)(std::string), std::string shortName, std::string longName, std::string description, Data data = Data::NoData, bool required = false);
+	Flag(void(*call)(std::string), std::string shortName, std::string longName, std::string description, Data data = Data::NoData, bool required = false);
 public:
 	virtual std::string toString();
-};
-
-class Flag : public std::shared_ptr<_flag>
-{
-public:
-	Flag();
-	Flag(_flag * _Px);
-	Flag(void(*call)(std::string), std::string shortName, std::string longName, std::string description, Data data = Data::NoData, bool required = false);
+	friend CLI;
 };
 
 class CLI : public Base
 {
 #pragma region Instance Variables
 private:
-	std::vector<Flag> flags;
+	linq::linq_vec<std::shared_ptr<Flag>> flags;
 	std::string description;
-	int(*startDelegate)(std::vector<std::string>);
+	std::function<int(std::vector<std::string>)> startDelegate;
 	std::vector<std::string> argv;
 #pragma endregion
 
 
 #pragma region Constructors
 public:
-	CLI(int(*start)(std::vector<std::string>), std::vector<Flag> flags, int argc, const char* argv[], std::string description = "");
+	CLI(std::function<int(std::vector<std::string>)> start, std::vector<std::shared_ptr<Flag>> flags, const int &argc, const char* argv[], std::string description = "");
 #pragma endregion
 
 
@@ -78,8 +75,8 @@ public:
 
 #pragma region Helper Methods
 private:
-	std::tuple<bool, std::string> getArg(std::string arg);
-	Flag getFlag(std::string name, bool isLong);
+	std::pair<bool, std::string> getArg(std::string arg);
+	Flag* getFlag(std::string name, bool isLong);
 #pragma endregion
 };
 
