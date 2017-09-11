@@ -2,8 +2,8 @@ SRC=src/cli.cpp
 OBJ=cli.o
 PNAME=cli
 SAMPLE=samples/main.cpp
-CFLAGS=-static -Lstringx/lib -lstringx -Istringx/include -Ilinq/include -Iinclude
-SCFLAGS=-Iinclude
+CFLAGS=-static -Lstringx/lib -lstringx -Iinclude -Istringx/include -Ilinq/include
+SCFLAGS=-Iinclude -Istringx/include -Ilinq/include
 
 
 library: $(SRC)
@@ -14,8 +14,8 @@ library: $(SRC)
 	rm $(OBJ)
 	
 sample: library $(SAMPLE)
-	g++ -std=c++14 $(SCFLAGS) -static $(SAMPLE) -Llib -l$(PNAME) -o $(PNAME)-sample
+	g++ -std=c++14 $(SCFLAGS) -static $(SAMPLE) -Llib -l$(PNAME) -Lstringx/lib -lstringx -o $(PNAME)-sample.o
 	
 clean:
 	cd stringx && make clean
-	rm -Rf lib/ $(PNAME)-sample $(OBJ) || true
+	rm -Rf lib/ $(PNAME)-sample.o $(OBJ) || true
